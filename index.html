@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Mein Tagebuch</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="kopf">
+    <h1>📖 Mein Tagebuch</h1>
+  </header>
+  <main id="startseite">
+    <p class="hinweis" id="ladehinweis">Funktionen werden geladen …</p>
+    <nav id="moduleListe" class="module"></nav>
+  </main>
+  <script src="js/db.js"></script>
+  <script src="js/common.js"></script>
+  <script>
+    async function baueStartseite() {
+      try {
+        const antwort = await fetch("modules.json");
+        const inventar = await antwort.json();
+        const einstellungen = (await holeEinstellung("moduleEinstellungen")) || {};
+        const module = inventar.modules
+          .map((m, i) => ({ ...m, platz: einstellungen[m.id]?.reihenfolge ?? i }))
+          .sort((a, b) => a.platz - b.platz)
+          .filter(m => einstellungen[m.id]?.aktiv !== false);
+        const container = document.getElementById("moduleListe");
+        container.innerHTML = "";
+        for (const m of module) {
+          const titel = einstellungen[m.id]?.titel || m.titel;
+          const knopf = document.createElement("a");
+          knopf.className = "modulKnopf";
+          knopf.href = m.datei;
+          knopf.innerHTML = `<span class="icon">${m.icon}</span><span>${titel}</span>`;
+          container.appendChild(knopf);
+        }
+        document.getElementById("ladehinweis").style.display = "none";
+      } catch (fehler) {
+        document.getElementById("ladehinweis").textContent =
+          "Fehler beim Laden: " + fehler.message;
+      }
+    }
+    baueStartseite();
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+  </script>
+</body>
+</html>

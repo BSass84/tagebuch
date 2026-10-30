@@ -1,0 +1,25 @@
+{
+  "modules": [
+    {
+      "id": "tagebuch",
+      "titel": "Tagebuch",
+      "icon": "📖",
+      "datei": "modules/tagebuch.html",
+      "beschreibung": "Längere Einträge mit Datum"
+    },
+    {
+      "id": "kurznotiz",
+      "titel": "Kurznotiz",
+      "icon": "⚡",
+      "datei": "modules/kurznotiz.html",
+      "beschreibung": "Schnelle Notiz mit einem Feld"
+    },
+    {
+      "id": "verwalten",
+      "titel": "Module verwalten",
+      "icon": "⚙️",
+      "datei": "modules/verwalten.html",
+      "beschreibung": "Funktionen ein-/ausblenden, umbenennen, Reihenfolge"
+    }
+  ]
+}

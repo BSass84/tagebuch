@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Module verwalten</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <main>
+    <h2>Funktionen</h2>
+    <p class="hinweis">Änderungen greifen sofort. Neue Module aus modules.json erscheinen automatisch hier.</p>
+    <div id="liste"></div>
+  </main>
+  <script src="../js/db.js"></script>
+  <script src="../js/common.js"></script>
+  <script>
+    baueKopf("Module verwalten", "⚙️");
+
+    let module = [];
+    let einst = {};
+
+    async function lade() {
+      const inventar = await (await fetch("../modules.json")).json();
+      einst = (await holeEinstellung("moduleEinstellungen")) || {};
+      module = inventar.modules
+        .map((m, i) => ({ ...m, platz: einst[m.id]?.reihenfolge ?? i }))
+        .sort((a, b) => a.platz - b.platz);
+      zeichne();
+    }
+
+    function zeichne() {
+      const box = document.getElementById("liste");
+      box.innerHTML = "";
+      module.forEach((m, i) => {
+        const e = einst[m.id] || {};
+        const reihe = document.createElement("div");
+        reihe.style.cssText =
+          "display:flex;align-items:center;gap:8px;flex-wrap:wrap";
+
+        const icon = document.createElement("span");
+        icon.style.fontSize = "1.4rem";
+        icon.textContent = m.icon;
+
+        const name = document.createElement("input");
+        name.style.cssText = "flex:1;min-width:150px";
+        name.value = e.titel || m.titel;
+        name.addEventListener("change", async () => {
+          einst[m.id] = { ...(einst[m.id] || {}), titel: name.value };
+          await setzeEinstellung("moduleEinstellungen", einst);
+        });
+
+        const sichtbar = document.createElement("label");
+        const haken = document.createElement("input");
+        haken.type = "checkbox";
+        haken.checked = e.aktiv !== false;
+        haken.addEventListener("change", async () => {
+          einst[m.id] = { ...(einst[m.id] || {}), aktiv: haken.checked };
+          await setzeEinstellung("moduleEinstellungen", einst);
+        });
+        sichtbar.appendChild(haken);
+        sichtbar.appendChild(document.createTextNode(" sichtbar"));
+
+        const hoch = document.createElement("button");
+        hoch.className = "loeschen";
+        hoch.textContent = "▲";
+        hoch.addEventListener("click", () => verschiebe(i, i - 1));
+
+        const runter = document.createElement("button");
+        runter.className = "loeschen";
+        runter.textContent = "▼";
+        runter.addEventListener("click", () => verschiebe(i, i + 1));
+
+        reihe.append(icon, name, sichtbar, hoch, runter);
+        const zeile = document.createElement("div");
+        zeile.className = "eintrag";
+        zeile.appendChild(reihe);
+        box.appendChild(zeile);
+      });
+    }
+
+    async function verschiebe(von, zu) {
+      if (zu < 0 || zu >= module.length) return;
+      const [m] = module.splice(von, 1);
+      module.splice(zu, 0, m);
+      module.forEach((m2, i) => {
+        einst[m2.id] = { ...(einst[m2.id] || {}), reihenfolge: i };
+      });
+      await setzeEinstellung("moduleEinstellungen", einst);
+      zeichne();
+    }
+
+    lade();
+  </script>
+</body>
+</html>

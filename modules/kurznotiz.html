@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kurznotiz</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <main>
+    <form>
+      <label for="text">Notiz</label>
+      <textarea id="text" placeholder="Was dir gerade einfällt …"></textarea>
+      <button type="button" class="speichern" id="neu">＋ Neue Notiz</button>
+    </form>
+    <p class="hinweis" id="status"></p>
+    <h2>Letzte Notizen</h2>
+    <div id="liste"></div>
+  </main>
+  <script src="../js/db.js"></script>
+  <script src="../js/common.js"></script>
+  <script>
+    baueKopf("Kurznotiz", "⚡");
+
+    const feld = document.getElementById("text");
+    const status = document.getElementById("status");
+    let eintragId = null;
+    let timer = null;
+
+    // Beim Öffnen: letzten Eintrag wiederherstellen (Livespeicherung)
+    (async () => {
+      const liste = await holeEintraege("kurznotiz");
+      if (liste.length > 0) {
+        eintragId = liste[0].id;
+        feld.value = liste[0].payload.text || "";
+      }
+      zeigeListe();
+    })();
+
+    // Jede Eingabe automatisch sichern (0,5 s nach dem Tippen)
+    feld.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(sichere, 500);
+    });
+
+    async function sichere() {
+      eintragId = await speichereEintrag("kurznotiz", { text: feld.value }, eintragId);
+      status.textContent = "Gespeichert: " + lesebaresDatum(jetztIso());
+      zeigeListe();
+    }
+
+    // Beginnt NUR eine neue Notiz – Speichern läuft immer automatisch
+    document.getElementById("neu").addEventListener("click", async () => {
+      await sichere();
+      eintragId = null;
+      feld.value = "";
+      status.textContent = "";
+      feld.focus();
+    });
+
+    async function zeigeListe() {
+      const liste = await holeEintraege("kurznotiz");
+      document.getElementById("liste").innerHTML = liste.map(e =>
+        '<div class="eintrag"><div class="datum">' + lesebaresDatum(e.erstelltAt) +
+        "</div><div>" + (e.payload.text || "").replace(/</g, "&lt;") + "</div></div>"
+      ).join("");
+    }
+  </script>
+</body>
+</html>

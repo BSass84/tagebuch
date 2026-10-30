@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tagebuch</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <main>
+    <form>
+      <label for="text">Eintrag</label>
+      <textarea id="text" placeholder="Wie war dein Tag?"></textarea>
+      <label for="anhang">Bilder / Dateien anhängen</label>
+      <input type="file" id="anhang" multiple>
+      <button type="button" class="speichern" id="neu">＋ Neuer Eintrag</button>
+    </form>
+    <p class="hinweis" id="status"></p>
+    <h2>Letzte Einträge</h2>
+    <div id="liste"></div>
+  </main>
+  <script src="../js/db.js"></script>
+  <script src="../js/common.js"></script>
+  <script>
+    baueKopf("Tagebuch", "📖");
+
+    const feld = document.getElementById("text");
+    const status = document.getElementById("status");
+    let eintragId = null;
+    let timer = null;
+
+    // Beim Öffnen: letzten Eintrag wiederherstellen (Livespeicherung)
+    (async () => {
+      const liste = await holeEintraege("tagebuch");
+      if (liste.length > 0) {
+        eintragId = liste[0].id;
+        feld.value = liste[0].payload.text || "";
+      }
+      zeigeListe();
+    })();
+
+    feld.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(sichere, 500);
+    });
+
+    async function sichere() {
+      eintragId = await speichereEintrag("tagebuch", { text: feld.value }, eintragId);
+      status.textContent = "Gespeichert: " + lesebaresDatum(jetztIso());
+      zeigeListe();
+    }
+
+    // Anhänge: sofort mit dem Eintrag verknüpfen
+    document.getElementById("anhang").addEventListener("change", async (e) => {
+      await sichere();
+      for (const datei of e.target.files) {
+        await speichereMedium(eintragId, datei);
+      }
+      e.target.value = "";
+      status.textContent = "Anhänge gespeichert";
+      zeigeListe();
+    });
+
+    document.getElementById("neu").addEventListener("click", async () => {
+      await sichere();
+      eintragId = null;
+      feld.value = "";
+      status.textContent = "";
+      feld.focus();
+    });
+
+    async function zeigeListe() {
+      const liste = await holeEintraege("tagebuch");
+      const box = document.getElementById("liste");
+      box.innerHTML = "";
+      for (const e of liste) {
+        const karte = document.createElement("div");
+        karte.className = "eintrag";
+        karte.innerHTML = '<div class="datum">' + lesebaresDatum(e.erstelltAt) +
+          "</div><div>" + (e.payload.text || "").replace(/</g, "&lt;") + "</div>";
+        const medien = await holeMedien(e.id);
+        for (const m of medien) {
+          if (m.mimeType.startsWith("image/")) {
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(m.blob);
+            img.style.cssText = "max-width:100%;border-radius:8px;margin-top:6px";
+            karte.appendChild(img);
+          } else {
+            const info = document.createElement("div");
+            info.className = "datum";
+            info.textContent = "📎 " + m.name;
+            karte.appendChild(info);
+          }
+        }
+        box.appendChild(karte);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -102,5 +102,5 @@ textarea { min-height: 140px; }
 /* Verfeinerung Kopfzeilen-Fix: zusätzlicher Abstand
    über dem Titel (sicherer Bereich + 16 px) */
 body {
-  padding-top: calc(env(safe-area-inset-top) + 16px);
+  padding-top: calc(env(safe-area-inset-top) + 18px);
 }

@@ -98,3 +98,9 @@ textarea { min-height: 140px; }
   font-weight: 600;
   margin-bottom: 4px;
 }
+/* Sicherheitsabstand oben: verhindert, dass der Titel hinter
+   der Dynamic Island bzw. der Statusuhr verschwindet
+   (greift nur im Vollbild-Modus der installierten App) */
+body {
+  padding-top: env(safe-area-inset-top);
+}

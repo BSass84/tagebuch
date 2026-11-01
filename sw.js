@@ -2,7 +2,7 @@
    VERSION erhöhen (z. B. v2), wenn nach einem Update
    alle Geräte den neuen Stand laden sollen. */
 
-const VERSION = "tagebuch-v1";
+const VERSION = "tagebuch-v2";
 const DATEIEN = [
   "index.html",
   "modules.json",

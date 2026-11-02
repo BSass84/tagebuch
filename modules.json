@@ -20,6 +20,13 @@
       "icon": "⚙️",
       "datei": "modules/verwalten.html",
       "beschreibung": "Funktionen ein-/ausblenden, umbenennen, Reihenfolge"
+    },
+    {
+      "id": "einstellungen",
+      "titel": "Einstellungen",
+      "icon": "⚙️",
+      "datei": "modules/einstellungen.html",
+      "beschreibung": "Backup-Export, Historie und App-Einstellungen"
     }
   ]
 }

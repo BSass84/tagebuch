@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Einstellungen</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <main>
+    <h2>Backup & Export</h2>
+    <p class="hinweis" id="status"></p>
+    <button type="button" class="speichern" id="exportieren">⤓ Jetzt exportieren</button>
+    <p class="hinweis">Der Export enthält einen Monat pro Datei, alle Module zusammen, Bilder als eigene Dateien daneben. Im Teilen-Menü "In Dateien sichern" wählen und deinen iCloud-Ordner aussuchen.</p>
+    <label style="display:block; margin-top:1em;">
+      <input type="checkbox" id="banner"> Backup-Hinweis beim App-Start anzeigen
+    </label>
+    <h2>Backup-Historie (letzte drei Exporte)</h2>
+    <div id="historie"></div>
+  </main>
+  <script src="../js/db.js"></script>
+  <script src="../js/common.js"></script>
+  <script src="../js/export.js"></script>
+  <script>
+    baueKopf("Einstellungen", "⚙️");
+
+    const status = document.getElementById("status");
+    const bannerFeld = document.getElementById("banner");
+
+    (async () => {
+      const letzter = await holeEinstellung("letzterExport");
+      status.textContent = letzter
+        ? "Letzter Export: " + lesebaresDatum(letzter)
+        : "Noch kein Export vorhanden.";
+      bannerFeld.checked = !((await holeEinstellung("exportBannerAus")) === true);
+      zeigeHistorie();
+    })();
+
+    bannerFeld.addEventListener("change", async () => {
+      await setzeEinstellung("exportBannerAus", !bannerFeld.checked);
+    });
+
+    document.getElementById("exportieren").addEventListener("click", async () => {
+      status.textContent = "Export wird vorbereitet ...";
+      try {
+        const ergebnis = await exportiereNeues();
+        status.textContent = ergebnis === "geteilt"
+          ? "Export uebergeben. Im Teilen-Menue 'In Dateien sichern' waehlen."
+          : "Export als Download gestartet.";
+      } catch (fehler) {
+        status.textContent = "Teilen abgebrochen. Der vorbereitete Export bleibt in der Historie erhalten.";
+      }
+      const letzter = await holeEinstellung("letzterExport");
+      if (letzter) status.textContent = "Letzter Export: " + lesebaresDatum(letzter);
+      zeigeHistorie();
+    });
+
+    async function zeigeHistorie() {
+      const historie = await holeExportHistorie();
+      const feld = document.getElementById("historie");
+      if (historie.length === 0) {
+        feld.innerHTML = "<p class='hinweis'>Noch keine Exporte gespeichert.</p>";
+        return;
+      }
+      feld.innerHTML = historie.map((g, i) => {
+        const monate = g.monate.map(m => (m.monat + 1) + "/" + m.jahr).join(", ");
+        return "<div class='eintrag'><div class='datum'>" + lesebaresDatum(g.erstelltAm) +
+          " - " + monate + "</div>" +
+          "<button type='button' class='speichern' style='margin-top:8px;' onclick='erneutSichern(" + i + ")'>Erneut sichern</button></div>";
+      }).join("");
+    }
+
+    async function erneutSichern(i) {
+      try {
+        await teileHistorie(i);
+      } catch (fehler) {
+        status.textContent = "Teilen abgebrochen.";
+      }
+    }
+  </script>
+</body>
+</html>

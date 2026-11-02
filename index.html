@@ -13,13 +13,21 @@
 <body>
   <header class="kopf">
     <h1>📖 Mein Tagebuch</h1>
+    <button type="button" class="speichern" id="startSichern" style="float:right; margin-top:6px;">⤓ Sichern</button>
   </header>
   <main id="startseite">
+    <div id="backupBanner" class="eintrag" style="display:none;">
+      <div class="datum">📅 Wochen-Backup</div>
+      <div>Zeit, deine Einträge zu sichern – ein Tap genügt.</div>
+      <button type="button" class="speichern" id="bannerSichern">⤓ Jetzt sichern</button>
+      <button type="button" class="speichern" id="bannerSpaeter" style="margin-left:8px;">Später</button>
+    </div>
     <p class="hinweis" id="ladehinweis">Funktionen werden geladen …</p>
     <nav id="moduleListe" class="module"></nav>
   </main>
   <script src="js/db.js"></script>
   <script src="js/common.js"></script>
+  <script src="js/export.js"></script>
   <script>
     async function baueStartseite() {
       try {
@@ -47,6 +55,54 @@
       }
     }
     baueStartseite();
+
+    async function starteBackupLogik() {
+      // 1. Stiller Tages-Snapshot: einmal pro Tag beim ersten Start
+      try {
+        const heuteSnapshot = new Date().toISOString().slice(0, 10);
+        if ((await holeEinstellung("letzterAutoExport")) !== heuteSnapshot) {
+          await erstelleSnapshot();
+          await setzeEinstellung("letzterAutoExport", heuteSnapshot);
+        }
+      } catch (fehler) {
+        // Der Snapshot darf den Start niemals blockieren
+      }
+
+      // 2. Wochen-Banner: nur montags, einmal pro Montag, abschaltbar
+      const banner = document.getElementById("backupBanner");
+      const heute = new Date().toISOString().slice(0, 10);
+      const istMontag = new Date().getDay() === 1;
+      const bannerAus = (await holeEinstellung("exportBannerAus")) === true;
+      const schonGezeigt = (await holeEinstellung("letzterBannerTag")) === heute;
+      if (istMontag && !bannerAus && !schonGezeigt) {
+        banner.style.display = "block";
+      }
+
+      document.getElementById("bannerSichern").addEventListener("click", async () => {
+        banner.style.display = "none";
+        await setzeEinstellung("letzterBannerTag", heute);
+        try {
+          await exportiereNeues();
+        } catch (fehler) {
+          // Teilen abgebrochen - die Vorbereitung bleibt in der Historie
+        }
+      });
+
+      document.getElementById("bannerSpaeter").addEventListener("click", async () => {
+        banner.style.display = "none";
+        await setzeEinstellung("letzterBannerTag", heute);
+      });
+
+      // 3. Sichern-Button oben rechts
+      document.getElementById("startSichern").addEventListener("click", async () => {
+        try {
+          await exportiereNeues();
+        } catch (fehler) {
+          // Teilen abgebrochen
+        }
+      });
+    }
+    starteBackupLogik();
   </script>
   <script>
     if ("serviceWorker" in navigator) {

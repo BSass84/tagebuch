@@ -157,3 +157,26 @@ async function teileHistorie(index) {
   }
   await teileDateien(dateien);
 }
+
+/* Stiller Tages-Snapshot (ohne Teilen-Menü):
+   Sichert seit dem letzten Export geänderte Monate
+   (oder den aktuellen Monat) in die Backup-Historie. */
+async function erstelleSnapshot() {
+  let monate = await monateMitAenderungen();
+  if (monate.length === 0) {
+    const j = new Date();
+    monate = [{ jahr: j.getFullYear(), monat: j.getMonth() }];
+  }
+  const generation = { erstelltAm: jetztIso(), monate: [] };
+  for (const m of monate) {
+    const { md, medienDateien } = await baueMonatsMarkdown(m.jahr, m.monat);
+    generation.monate.push({
+      jahr: m.jahr, monat: m.monat, md,
+      medien: medienDateien.map(f => ({ name: f.name, blob: f }))
+    });
+  }
+  const historie = (await holeEinstellung("exportHistorie")) || [];
+  historie.unshift(generation);
+  while (historie.length > 3) historie.pop();
+  await setzeEinstellung("exportHistorie", historie);
+}

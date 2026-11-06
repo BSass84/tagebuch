@@ -15,13 +15,6 @@
       "beschreibung": "Schnelle Notiz mit einem Feld"
     },
     {
-      "id": "verwalten",
-      "titel": "Module verwalten",
-      "icon": "⚙️",
-      "datei": "modules/verwalten.html",
-      "beschreibung": "Funktionen ein-/ausblenden, umbenennen, Reihenfolge"
-    },
-    {
       "id": "einstellungen",
       "titel": "Einstellungen",
       "icon": "⚙️",

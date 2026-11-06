@@ -11,10 +11,18 @@
     <h2>Backup & Export</h2>
     <p class="hinweis" id="status"></p>
     <button type="button" class="speichern" id="exportieren">⤓ Jetzt exportieren</button>
-    <p class="hinweis">Der Export enthält einen Monat pro Datei, alle Module zusammen, Bilder als eigene Dateien daneben. Im Teilen-Menü "In Dateien sichern" wählen und deinen iCloud-Ordner aussuchen.</p>
-    <label style="display:block; margin-top:1em;">
-      <input type="checkbox" id="banner"> : Wochen-Erinnerung (montags) anzeigen
+    <p class="hinweis">Monatsdatei sichern im Teilen-Menü über „In Dateien sichern“.</p>
+
+    <h2>Wochen-Erinnerung</h2>
+    <p class="hinweis">Montags erinnert dich die App beim Start ans Sichern.</p>
+    <label style="display:block; padding:8px 0;">
+      <input type="checkbox" id="banner"> Erinnerung anzeigen
     </label>
+
+    <h2>Moduleinstellungen</h2>
+    <p class="hinweis" id="modulStatus"></p>
+    <div id="modulListe"></div>
+
     <h2>Backup-Historie (letzte drei Exporte)</h2>
     <div id="historie"></div>
   </main>
@@ -23,32 +31,47 @@
   <script src="../js/export.js"></script>
   <script>
     baueKopf("Einstellungen", "⚙️");
-a
+
+    /* ===== Backup & Export ===== */
     const status = document.getElementById("status");
     const bannerFeld = document.getElementById("banner");
+
+    async function ladeBannerEinstellung() {
+      const wert = await holeEinstellung("exportBannerAus");
+      bannerFeld.checked = !(wert === true);
+    }
+
+    async function sichereBannerEinstellung() {
+      const wert = !bannerFeld.checked;
+      await setzeEinstellung("exportBannerAus", wert);
+      const kontrolle = await holeEinstellung("exportBannerAus");
+      if (kontrolle !== wert) {
+        await setzeEinstellung("exportBannerAus", wert);
+      }
+    }
+
+    ladeBannerEinstellung();
+    window.addEventListener("pageshow", ladeBannerEinstellung);
+    bannerFeld.addEventListener("change", sichereBannerEinstellung);
+    bannerFeld.addEventListener("click", sichereBannerEinstellung);
 
     (async () => {
       const letzter = await holeEinstellung("letzterExport");
       status.textContent = letzter
         ? "Letzter Export: " + lesebaresDatum(letzter)
         : "Noch kein Export vorhanden.";
-      bannerFeld.checked = !((await holeEinstellung("exportBannerAus")) === true);
       zeigeHistorie();
     })();
 
-    bannerFeld.addEventListener("change", async () => {
-      await setzeEinstellung("exportBannerAus", !bannerFeld.checked);
-    });
-
     document.getElementById("exportieren").addEventListener("click", async () => {
-      status.textContent = "Export wird vorbereitet ...";
+      status.textContent = "Export wird vorbereitet …";
       try {
         const ergebnis = await exportiereNeues();
         status.textContent = ergebnis === "geteilt"
-          ? "Export uebergeben. Im Teilen-Menue 'In Dateien sichern' waehlen."
+          ? "Export übergeben – im Teilen-Menü „In Dateien sichern“ wählen."
           : "Export als Download gestartet.";
       } catch (fehler) {
-        status.textContent = "Teilen abgebrochen. Der vorbereitete Export bleibt in der Historie erhalten.";
+        status.textContent = "Teilen abgebrochen. Die Vorbereitung bleibt in der Historie.";
       }
       const letzter = await holeEinstellung("letzterExport");
       if (letzter) status.textContent = "Letzter Export: " + lesebaresDatum(letzter);
@@ -65,8 +88,8 @@ a
       feld.innerHTML = historie.map((g, i) => {
         const monate = g.monate.map(m => (m.monat + 1) + "/" + m.jahr).join(", ");
         return "<div class='eintrag'><div class='datum'>" + lesebaresDatum(g.erstelltAm) +
-          " - " + monate + "</div>" +
-          "<button type='button' class='speichern' style='margin-top:8px;' onclick='erneutSichern(" + i + ")'>Erneut sichern</button></div>";
+          " – " + monate + "</div>" +
+          "<button type='button' class='speichern' style='display:inline-block; width:auto; padding:8px 14px; margin-top:8px;' onclick='erneutSichern(" + i + ")'>Erneut sichern</button></div>";
       }).join("");
     }
 
@@ -76,6 +99,89 @@ a
       } catch (fehler) {
         status.textContent = "Teilen abgebrochen.";
       }
+    }
+
+    /* ===== Moduleinstellungen ===== */
+    const modulStatus = document.getElementById("modulStatus");
+    let moduleListe = [];
+    let modulDaten = {};
+    let titelTimer = null;
+
+    async function ladeModule() {
+      const antwort = await fetch("../modules.json");
+      const inventar = await antwort.json();
+      modulDaten = (await holeEinstellung("moduleEinstellungen")) || {};
+      moduleListe = inventar.modules
+        .map((m, i) => ({
+          id: m.id,
+          icon: m.icon,
+          originalTitel: m.titel,
+          platz: modulDaten[m.id]?.reihenfolge ?? i,
+          aktiv: !(modulDaten[m.id]?.aktiv === false),
+          titel: modulDaten[m.id]?.titel || m.titel
+        }))
+        .sort((a, b) => a.platz - b.platz);
+      zeigeModule();
+    }
+    ladeModule();
+
+    function zeigeModule() {
+      const feld = document.getElementById("modulListe");
+      feld.innerHTML = "";
+      moduleListe.forEach((m, i) => {
+        const zeile = document.createElement("div");
+        zeile.className = "eintrag";
+        zeile.innerHTML =
+          "<div class='datum'>" + m.icon + " " + m.originalTitel + "</div>" +
+          "<input type='text' class='titel' style='width:100%; margin:6px 0; padding:8px;'>" +
+          "<label style='display:block; margin-bottom:8px;'>" +
+          "<input type='checkbox' class='aktiv'> auf der Startseite anzeigen</label>" +
+          "<button type='button' class='speichern' style='display:inline-block; width:auto; padding:8px 14px;' data-aktion='hoch'>▲</button> " +
+          "<button type='button' class='speichern' style='display:inline-block; width:auto; padding:8px 14px;' data-aktion='runter'>▼</button>";
+        zeile.querySelector(".titel").value = m.titel;
+        zeile.querySelector(".aktiv").checked = m.aktiv;
+
+        zeile.querySelector(".titel").addEventListener("input", (e) => {
+          m.titel = e.target.value;
+          clearTimeout(titelTimer);
+          titelTimer = setTimeout(speichereModule, 500);
+        });
+        zeile.querySelector(".aktiv").addEventListener("change", (e) => {
+          m.aktiv = e.target.checked;
+          speichereModule();
+        });
+        zeile.querySelector("[data-aktion='hoch']").addEventListener("click", () => {
+          if (i === 0) return;
+          const tmp = moduleListe[i - 1];
+          moduleListe[i - 1] = moduleListe[i];
+          moduleListe[i] = tmp;
+          zeigeModule();
+          speichereModule();
+        });
+        zeile.querySelector("[data-aktion='runter']").addEventListener("click", () => {
+          if (i === moduleListe.length - 1) return;
+          const tmp = moduleListe[i + 1];
+          moduleListe[i + 1] = moduleListe[i];
+          moduleListe[i] = tmp;
+          zeigeModule();
+          speichereModule();
+        });
+        feld.appendChild(zeile);
+      });
+    }
+
+    async function speichereModule() {
+      const neu = { ...modulDaten };
+      moduleListe.forEach((m, i) => {
+        neu[m.id] = {
+          reihenfolge: i,
+          aktiv: m.aktiv,
+          titel: m.titel && m.titel !== m.originalTitel ? m.titel : ""
+        };
+      });
+      await setzeEinstellung("moduleEinstellungen", neu);
+      modulDaten = neu;
+      modulStatus.textContent = "Gespeichert: " + lesebaresDatum(jetztIso());
     }
   </script>
 </body>

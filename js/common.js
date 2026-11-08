@@ -37,3 +37,44 @@ function heutigesDatumFeld() {
   const t = String(d.getDate()).padStart(2, "0");
   return d.getFullYear() + "-" + m + "-" + t;
 }
+// --- Wachhalten: Display bleibt an, solange der Cursor in einem Textfeld steht (Diktat) ---
+var wakeLock = null;
+
+function istTextfeld(el) {
+  if (!el) return false;
+  if (el.tagName === 'TEXTAREA') return true;
+  if (el.tagName === 'INPUT' && ['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'range', 'image'].indexOf(el.type) === -1) return true;
+  return false;
+}
+
+async function wachhaltenAn() {
+  try {
+    if ('wakeLock' in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', function() { wakeLock = null; });
+    }
+  } catch (e) { /* nicht unterstützt oder fehlgeschlagen: still ignorieren */ }
+}
+
+function wachhaltenAus() {
+  if (wakeLock) {
+    wakeLock.release();
+    wakeLock = null;
+  }
+}
+
+document.addEventListener('focusin', function(e) {
+  if (istTextfeld(e.target)) wachhaltenAn();
+});
+
+document.addEventListener('focusout', function(e) {
+  if (istTextfeld(e.target)) wachhaltenAus();
+});
+
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && istTextfeld(document.activeElement)) {
+    wachhaltenAn();
+  } else {
+    wachhaltenAus();
+  }
+});

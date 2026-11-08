@@ -4,14 +4,9 @@
 #   python3 publish.py        -> veroeffentlichen
 #   python3 publish.py test   -> Trockenlauf (nichts wird veraendert, nichts gepusht)
 #
-# Ablauf:
-#   1. Vorpruefungen
-#   2. modules.json aus dem modules/-Ordner erzeugen (mit Ja/Nein-Bestaetigung)
-#   3. DATEIEN-Liste in sw.js automatisch aus dem Projekt erzeugen
-#   4. Version um eins erhoehen
-#   5. Versionsbeschreibung abfragen
-#   6. lg2 add . / commit / push
-#   7. Schluss-Ausgabe
+# Versionsschema MAJOR.MINOR (vollautomatisch):
+#   neues Modul entdeckt -> grosse Version (z. B. 9.4 -> 10.0)
+#   sonst                -> kleine Version (z. B. 9.4 -> 9.5)
 
 import json, os, re, sys, io
 
@@ -147,18 +142,30 @@ if dazu or raus:
         sw_text = sw_text[:liste_treffer.start()] + block + sw_text[liste_treffer.end():]
         print("DATEIEN-Liste aktualisiert (" + str(len(neue_dateiliste)) + " Dateien).")
 
-# ---------- 4. Version erhoehen ----------
-version_treffer = re.search(r"(tagebuch-v)(\d+)", sw_text)
+# ---------- 4. Version erhoehen (MAJOR.MINOR, vollautomatisch) ----------
+version_treffer = re.search(r"(tagebuch-v)(\d+)(?:\.(\d+))?", sw_text)
 if not version_treffer:
     abbruch("Keine Versionsnummer (tagebuch-vN) in sw.js gefunden.")
 
-alte_version = int(version_treffer.group(2))
-neue_version = alte_version + 1
+alte_major = int(version_treffer.group(2))
+alte_minor = int(version_treffer.group(3)) if version_treffer.group(3) else 0
+alte_anzeige = version_treffer.group(0)
+
+if neu_ids:
+    neue_major = alte_major + 1
+    neue_minor = 0
+    art = "grosse Erweiterung (neues Modul)"
+else:
+    neue_major = alte_major
+    neue_minor = alte_minor + 1
+    art = "kleine Aenderung"
+
+version_text = str(neue_major) + "." + str(neue_minor)
 print("")
-print("Version: tagebuch-v" + str(alte_version) + "  ->  tagebuch-v" + str(neue_version))
+print("Version: " + alte_anzeige + "  ->  tagebuch-v" + version_text + "  (" + art + ")")
 
 if not TROCKEN:
-    neuer_text = re.sub(r"(tagebuch-v)(\d+)", r"\g<1>" + str(neue_version), sw_text, count=1)
+    neuer_text = re.sub(r"(tagebuch-v)(\d+)(?:\.(\d+))?", r"\g<1>" + version_text, sw_text, count=1)
     with io.open("sw.js", "w", encoding="utf-8") as f:
         f.write(neuer_text)
 
@@ -166,7 +173,7 @@ if not TROCKEN:
 print("")
 beschreibung = ""
 while not beschreibung:
-    beschreibung = input("Tippe die Versionsbeschreibung fuer Version " + str(neue_version) + ": ").strip()
+    beschreibung = input("Tippe die Versionsbeschreibung fuer Version " + version_text + ": ").strip()
     if not beschreibung:
         print("Bitte eine Beschreibung eingeben.")
 
@@ -175,7 +182,7 @@ if TROCKEN:
     print("")
     print("[Trockenlauf] Diese Befehle wuerden jetzt ausgefuehrt:")
     print("  lg2 add .")
-    print('  lg2 commit -m "Version ' + str(neue_version) + ": " + beschreibung + '"')
+    print('  lg2 commit -m "Version ' + version_text + ": " + beschreibung + '"')
     print("  lg2 push -u origin")
     print("[Trockenlauf] Ende - nichts wurde veraendert.")
     sys.exit(0)
@@ -201,7 +208,7 @@ if not laufe(["lg2", "add", "."]):
     abbruch("lg2 add . ist fehlgeschlagen.")
 
 print("lg2 commit")
-if not laufe(["lg2", "commit", "-m", "Version " + str(neue_version) + ": " + beschreibung]):
+if not laufe(["lg2", "commit", "-m", "Version " + version_text + ": " + beschreibung]):
     abbruch("lg2 commit ist fehlgeschlagen.")
 
 print("lg2 push")
@@ -209,5 +216,5 @@ if not laufe(["lg2", "push", "-u", "origin"], "pushed"):
     abbruch("lg2 push ist fehlgeschlagen (kein Netz? Login?). Die Dateien sind lokal committet - spaeter einfach erneut versuchen.")
 
 print("")
-print("Veroeffentlicht: Version " + str(neue_version) + " - \"" + beschreibung + "\"")
+print("Veroeffentlicht: Version " + version_text + " - \"" + beschreibung + "\"")
 print("App auf dem iPhone komplett schliessen und neu oeffnen, um die neue Version zu laden.")

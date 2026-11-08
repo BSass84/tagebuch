@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gassigänge</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <main>
+    <form>
+      <label>Heute selbst gegangen</label>
+      <label><input type="checkbox" id="morgens"> Morgens</label>
+      <label><input type="checkbox" id="mittags"> Mittags</label>
+      <label><input type="checkbox" id="nachmittags"> Nachmittags</label>
+      <label><input type="checkbox" id="abends"> Abends</label>
+      <label for="auffaelligkeiten">Auffälligkeiten bei Whiskey</label>
+      <textarea id="auffaelligkeiten" placeholder="Fell, Appetin, Stimmung, sonstiges ..."></textarea>
+    </form>
+    <p class="hinweis" id="status"></p>
+    <h2>Letzte Tage</h2>
+    <div id="liste"></div>
+  </main>
+  <script src="../js/db.js"></script>
+  <script src="../js/common.js"></script>
+  <script>
+    baueKopf("Gassigänge", "🐕");
+
+    const status = document.getElementById("status");
+    const textFeld = document.getElementById("auffaelligkeiten");
+    const haken = {
+      morgens: document.getElementById("morgens"),
+      mittags: document.getElementById("mittags"),
+      nachmittags: document.getElementById("nachmittags"),
+      abends: document.getElementById("abends")
+    };
+    let eintragId = null;
+    let timer = null;
+
+    function heuteLokal() {
+      const d = new Date();
+      return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+    }
+
+    // Beim Öffnen: heutigen Eintrag wiederherstellen (eine Einheit pro Tag)
+    (async () => {
+      const liste = await holeEintraege("gassigaenge");
+      const heute = heuteLokal();
+      for (const e of liste) {
+        if (e.payload && e.payload.tag === heute) {
+          eintragId = e.id;
+          textFeld.value = e.payload.auffaelligkeiten || "";
+          for (const k in haken) haken[k].checked = !!(e.payload[k]);
+          break;
+        }
+      }
+      zeigeListe();
+    })();
+
+    // Haken: sofort sichern; Text: 0,5 s nach dem Tippen
+    for (const k in haken) {
+      haken[k].addEventListener("change", sichere);
+    }
+    textFeld.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(sichere, 500);
+    });
+
+    async function sichere() {
+      const payload = {
+        tag: heuteLokal(),
+        morgens: haken.morgens.checked,
+        mittags: haken.mittags.checked,
+        nachmittags: haken.nachmittags.checked,
+        abends: haken.abends.checked,
+        auffaelligkeiten: textFeld.value
+      };
+      eintragId = await speichereEintrag("gassigaenge", payload, eintragId);
+      status.textContent = "Gespeichert: " + lesebaresDatum(jetztIso());
+      zeigeListe();
+    }
+
+    async function zeigeListe() {
+      const liste = await holeEintraege("gassigaenge");
+      document.getElementById("liste").innerHTML = liste.map(e => {
+        const p = e.payload || {};
+        const zeiten = ["morgens", "mittags", "nachmittags", "abends"]
+          .filter(k => p[k])
+          .map(k => k.charAt(0).toUpperCase() + k.slice(1))
+          .join(" · ");
+        const text = (p.auffaelligkeiten || "").replace(/</g, "&lt;");
+        return '<div class="eintrag"><div class="datum">' + lesebaresDatum(e.erstelltAt) +
+          "</div><div>" + (zeiten || "—") + "</div><div>" + text + "</div></div>";
+      }).join("");
+    }
+  </script>
+</body>
+</html>

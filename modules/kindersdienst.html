@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kindersdienst</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <main>
+    <form>
+      <label>Heute selbst erledigt (Louise)</label>
+      <label><input type="checkbox" id="gebracht"> Gebracht</label>
+      <label><input type="checkbox" id="abgeholt"> Abgeholt</label>
+      <div id="abgeholtVonBlock" style="display:none">
+        <label>Von wo abgeholt?</label>
+        <label><input type="radio" name="abgeholtVon" value="kita"> Von der Kita</label>
+        <label><input type="radio" name="abgeholtVon" value="verabredung"> Von einer Verabredung</label>
+        <label><input type="radio" name="abgeholtVon" value="event"> Abends von einem Event</label>
+        <label><input type="radio" name="abgeholtVon" value="sonstiges"> Sonstiges</label>
+      </div>
+      <label><input type="checkbox" id="nachmittags"> Nachmittags</label>
+      <label for="notiz">Notiz</label>
+      <textarea id="notiz" placeholder="z. B. Jess hat gebracht, Absprachen ..."></textarea>
+    </form>
+    <p class="hinweis" id="status"></p>
+    <h2>Letzte Tage</h2>
+    <div id="liste"></div>
+  </main>
+  <script src="../js/db.js"></script>
+  <script src="../js/common.js"></script>
+  <script>
+    baueKopf("Kindersdienst", "🧒");
+
+    const status = document.getElementById("status");
+    const textFeld = document.getElementById("notiz");
+    const haken = {
+      gebracht: document.getElementById("gebracht"),
+      abgeholt: document.getElementById("abgeholt"),
+      nachmittags: document.getElementById("nachmittags")
+    };
+    const vonBlock = document.getElementById("abgeholtVonBlock");
+    const vonNamen = { kita: "von der Kita", verabredung: "von einer Verabredung", event: "abends von einem Event", sonstiges: "Sonstiges" };
+    let eintragId = null;
+    let timer = null;
+
+    function heuteLokal() {
+      const d = new Date();
+      return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+    }
+
+    function vonGewaehlt() {
+      const r = document.querySelector('input[name="abgeholtVon"]:checked');
+      return r ? r.value : "";
+    }
+
+    function zeigeVonBlock() {
+      vonBlock.style.display = haken.abgeholt.checked ? "block" : "none";
+    }
+
+    // Beim Öffnen: heutigen Eintrag wiederherstellen (eine Einheit pro Tag)
+    (async () => {
+      const liste = await holeEintraege("kindersdienst");
+      const heute = heuteLokal();
+      for (const e of liste) {
+        if (e.payload && e.payload.tag === heute) {
+          eintragId = e.id;
+          textFeld.value = e.payload.notiz || "";
+          for (const k in haken) haken[k].checked = !!(e.payload[k]);
+          if (e.payload.abgeholtVon) {
+            const r = document.querySelector('input[name="abgeholtVon"][value="' + e.payload.abgeholtVon + '"]');
+            if (r) r.checked = true;
+          }
+          break;
+        }
+      }
+      zeigeVonBlock();
+      zeigeListe();
+    })();
+
+    // Haken: sofort sichern; Text: 0,5 s nach dem Tippen
+    for (const k in haken) {
+      haken[k].addEventListener("change", () => { zeigeVonBlock(); sichere(); });
+    }
+    const radios = document.querySelectorAll('input[name="abgeholtVon"]');
+    for (const r of radios) {
+      r.addEventListener("change", sichere);
+    }
+    textFeld.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(sichere, 500);
+    });
+
+    async function sichere() {
+      const payload = {
+        tag: heuteLokal(),
+        gebracht: haken.gebracht.checked,
+        abgeholt: haken.abgeholt.checked,
+        nachmittags: haken.nachmittags.checked,
+        abgeholtVon: vonGewaehlt(),
+        notiz: textFeld.value
+      };
+      eintragId = await speichereEintrag("kindersdienst", payload, eintragId);
+      status.textContent = "Gespeichert: " + lesebaresDatum(jetztIso());
+      zeigeListe();
+    }
+
+    async function zeigeListe() {
+      const liste = await holeEintraege("kindersdienst");
+      document.getElementById("liste").innerHTML = liste.map(e => {
+        const p = e.payload || {};
+        const dienste = [];
+        if (p.gebracht) dienste.push("Gebracht");
+        if (p.abgeholt) dienste.push("Abgeholt" + (p.abgeholtVon ? " (" + (vonNamen[p.abgeholtVon] || "") + ")" : ""));
+        if (p.nachmittags) dienste.push("Nachmittags");
+        const text = (p.notiz || "").replace(/</g, "&lt;");
+        return '<div class="eintrag"><div class="datum">' + lesebaresDatum(e.erstelltAt) +
+          "</div><div>" + (dienste.join(" · ") || "—") + "</div><div>" + text + "</div></div>";
+      }).join("");
+    }
+  </script>
+</body>
+</html>

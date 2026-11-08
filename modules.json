@@ -1,11 +1,32 @@
 {
   "modules": [
     {
-      "id": "tagebuch",
-      "titel": "Tagebuch",
-      "icon": "📖",
-      "datei": "modules/tagebuch.html",
-      "beschreibung": "Längere Einträge mit Datum"
+      "id": "absprachen",
+      "titel": "Absprachen",
+      "icon": "⚖️",
+      "datei": "modules/absprachen.html",
+      "beschreibung": "Absprachen"
+    },
+    {
+      "id": "einstellungen",
+      "titel": "Einstellungen",
+      "icon": "⚙️",
+      "datei": "modules/einstellungen.html",
+      "beschreibung": "Backup-Export, Historie und App-Einstellungen"
+    },
+    {
+      "id": "gassigaenge",
+      "titel": "Gassigänge",
+      "icon": "🐕",
+      "datei": "modules/gassigaenge.html",
+      "beschreibung": "Gassigänge"
+    },
+    {
+      "id": "kindersdienst",
+      "titel": "Kinderdienst",
+      "icon": "👧🏼",
+      "datei": "modules/kindersdienst.html",
+      "beschreibung": "Kinderdienst"
     },
     {
       "id": "kurznotiz",
@@ -15,11 +36,11 @@
       "beschreibung": "Schnelle Notiz mit einem Feld"
     },
     {
-      "id": "einstellungen",
-      "titel": "Einstellungen",
-      "icon": "⚙️",
-      "datei": "modules/einstellungen.html",
-      "beschreibung": "Backup-Export, Historie und App-Einstellungen"
+      "id": "tagebuch",
+      "titel": "Tagebuch",
+      "icon": "📖",
+      "datei": "modules/tagebuch.html",
+      "beschreibung": "Längere Einträge mit Datum"
     }
   ]
 }

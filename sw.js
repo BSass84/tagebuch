@@ -2,7 +2,7 @@
    VERSION erhöhen (z. B. v2), wenn nach einem Update
    alle Geräte den neuen Stand laden sollen. */
 
-const VERSION = "tagebuch-v9";
+const VERSION = "tagebuch-v10.0";
 const DATEIEN = [
   "index.html",
   "modules.json",
@@ -11,11 +11,14 @@ const DATEIEN = [
   "js/common.js",
   "js/db.js",
   "js/export.js",
+  "modules/absprachen.html",
   "modules/einstellungen.html",
-  "modules/tagebuch.html",
+  "modules/gassigaenge.html",
+  "modules/kindersdienst.html",
   "modules/kurznotiz.html",
+  "modules/tagebuch.html",
   "icons/icon-192.png",
-  "icons/icon-512.png"
+  "icons/icon-512.png",
 ];
 
 self.addEventListener("install", (e) => {

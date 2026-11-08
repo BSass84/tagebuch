@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
 # publish.py - Publishing-Routine fuer die Tagebuch-App
 #
-#   python3 publish.py        -> veroeffentlichen (Module pruefen, Version +1, Push)
+#   python3 publish.py        -> veroeffentlichen
 #   python3 publish.py test   -> Trockenlauf (nichts wird veraendert, nichts gepusht)
+#
+# Ablauf:
+#   1. Vorpruefungen
+#   2. modules.json aus dem modules/-Ordner erzeugen (mit Ja/Nein-Bestaetigung)
+#   3. DATEIEN-Liste in sw.js automatisch aus dem Projekt erzeugen
+#   4. Version um eins erhoehen
+#   5. Versionsbeschreibung abfragen
+#   6. lg2 add . / commit / push
+#   7. Schluss-Ausgabe
 
 import json, os, re, sys, io
 
@@ -27,8 +36,8 @@ alte = {}
 for m in daten["modules"]:
     alte[m["id"]] = m
 
-dateien = sorted(f for f in os.listdir("modules") if f.endswith(".html"))
-gefundene_ids = [f[:-5] for f in dateien]
+modul_dateien = sorted(f for f in os.listdir("modules") if f.endswith(".html"))
+gefundene_ids = [f[:-5] for f in modul_dateien]
 neu_ids = [i for i in gefundene_ids if i not in alte]
 weg_ids = [i for i in alte if i not in gefundene_ids]
 
@@ -88,27 +97,72 @@ if neu_ids or weg_ids:
 else:
     print("Keine Modul-Aenderungen noetig.")
 
-# ---------- 3. Version in sw.js erhoehen ----------
+# ---------- 3. DATEIEN-Liste in sw.js automatisch erzeugen ----------
+def sammle_app_dateien():
+    eintraege = ["index.html", "modules.json", "style.css", "manifest.webmanifest"]
+    if os.path.isdir("js"):
+        for f in sorted(os.listdir("js")):
+            if f.endswith(".js"):
+                eintraege.append("js/" + f)
+    if os.path.isdir("modules"):
+        for f in sorted(os.listdir("modules")):
+            if f.endswith(".html"):
+                eintraege.append("modules/" + f)
+    if os.path.isdir("icons"):
+        for f in sorted(os.listdir("icons")):
+            if f.endswith(".png"):
+                eintraege.append("icons/" + f)
+    return eintraege
+
 with io.open("sw.js", "r", encoding="utf-8") as f:
     sw_text = f.read()
 
-treffer = re.search(r"(tagebuch-v)(\d+)", sw_text)
-if not treffer:
+liste_treffer = re.search(r"const DATEIEN\s*=\s*\[[^\]]*\];", sw_text)
+if not liste_treffer:
+    abbruch("DATEIEN-Liste in sw.js nicht gefunden.")
+
+alte_dateiliste = re.findall(r'"([^"]+)"', liste_treffer.group(0))
+neue_dateiliste = sammle_app_dateien()
+dazu = [e for e in neue_dateiliste if e not in alte_dateiliste]
+raus = [e for e in alte_dateiliste if e not in neue_dateiliste]
+
+print("")
+print("=== SW.JS-DATEILISTE ===")
+if dazu or raus:
+    for e in dazu:
+        print("  + " + e)
+    for e in raus:
+        print("  - " + e + " (wird entfernt)")
+else:
+    print("Keine Aenderungen noetig (" + str(len(neue_dateiliste)) + " Dateien).")
+
+if dazu or raus:
+    if TROCKEN:
+        print("[Trockenlauf] DATEIEN-Liste wuerde jetzt neu geschrieben.")
+    else:
+        block = "const DATEIEN = [\n"
+        for e in neue_dateiliste:
+            block += '  "' + e + '",\n'
+        block += "];"
+        sw_text = sw_text[:liste_treffer.start()] + block + sw_text[liste_treffer.end():]
+        print("DATEIEN-Liste aktualisiert (" + str(len(neue_dateiliste)) + " Dateien).")
+
+# ---------- 4. Version erhoehen ----------
+version_treffer = re.search(r"(tagebuch-v)(\d+)", sw_text)
+if not version_treffer:
     abbruch("Keine Versionsnummer (tagebuch-vN) in sw.js gefunden.")
 
-alte_version = int(treffer.group(2))
+alte_version = int(version_treffer.group(2))
 neue_version = alte_version + 1
 print("")
 print("Version: tagebuch-v" + str(alte_version) + "  ->  tagebuch-v" + str(neue_version))
 
-if TROCKEN:
-    print("[Trockenlauf] sw.js wuerde jetzt auf v" + str(neue_version) + " erhoeht.")
-else:
+if not TROCKEN:
     neuer_text = re.sub(r"(tagebuch-v)(\d+)", r"\g<1>" + str(neue_version), sw_text, count=1)
     with io.open("sw.js", "w", encoding="utf-8") as f:
         f.write(neuer_text)
 
-# ---------- 4. Versionsbeschreibung ----------
+# ---------- 5. Versionsbeschreibung ----------
 print("")
 beschreibung = ""
 while not beschreibung:
@@ -116,23 +170,25 @@ while not beschreibung:
     if not beschreibung:
         print("Bitte eine Beschreibung eingeben.")
 
-# ---------- 5. Veroeffentlichen ----------
+# ---------- 6. Veroeffentlichen ----------
 if TROCKEN:
     print("")
     print("[Trockenlauf] Diese Befehle wuerden jetzt ausgefuehrt:")
     print("  lg2 add .")
-    print("  lg2 commit -m \"Version " + str(neue_version) + ": " + beschreibung + "\"")
+    print('  lg2 commit -m "Version ' + str(neue_version) + ": " + beschreibung + '"')
     print("  lg2 push -u origin")
     print("[Trockenlauf] Ende - nichts wurde veraendert.")
     sys.exit(0)
 
-def laufe(befehl):
+def laufe(befehl, erfolg_text=None):
     try:
         import subprocess
         ergebnis = subprocess.run(befehl, capture_output=True, text=True)
         ausgabe = (ergebnis.stdout or "") + (ergebnis.stderr or "")
         if ausgabe:
             print(ausgabe)
+        if erfolg_text and erfolg_text in ausgabe:
+            return True
         return ergebnis.returncode == 0
     except Exception as fehler:
         print("FEHLER: Befehl konnte nicht gestartet werden: " + str(fehler))
@@ -149,7 +205,7 @@ if not laufe(["lg2", "commit", "-m", "Version " + str(neue_version) + ": " + bes
     abbruch("lg2 commit ist fehlgeschlagen.")
 
 print("lg2 push")
-if not laufe(["lg2", "push", "-u", "origin"]):
+if not laufe(["lg2", "push", "-u", "origin"], "pushed"):
     abbruch("lg2 push ist fehlgeschlagen (kein Netz? Login?). Die Dateien sind lokal committet - spaeter einfach erneut versuchen.")
 
 print("")

@@ -78,3 +78,20 @@ document.addEventListener('visibilitychange', function() {
     wachhaltenAus();
   }
 });
+// --- Abschluss-Button: einheitlicher "Speichern"-Knopf auf jedem Modul ---
+document.addEventListener("DOMContentLoaded", function() {
+  const form = document.querySelector("form");
+  if (!form) return;
+  let knopf = document.getElementById("neu");
+  if (!knopf && typeof sichere === "function") {
+    knopf = document.createElement("button");
+    knopf.type = "button";
+    knopf.className = "speichern";
+    knopf.id = "neu";
+    knopf.addEventListener("click", async function() {
+      if (typeof sichere === "function") await sichere();
+    });
+    form.appendChild(knopf);
+  }
+  if (knopf) knopf.textContent = "Speichern";
+});

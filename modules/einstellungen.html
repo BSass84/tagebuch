@@ -29,6 +29,7 @@
   <script src="../js/db.js"></script>
   <script src="../js/common.js"></script>
   <script src="../js/uebergabe.js"></script>
+  <script src="../js/durchlauf.js"></script>
   <script src="../js/export.js"></script>
   <script>
     baueKopf("Einstellungen", "⚙️");
@@ -119,7 +120,8 @@
           originalTitel: m.titel,
           platz: modulDaten[m.id]?.reihenfolge ?? i,
           aktiv: !(modulDaten[m.id]?.aktiv === false),
-          titel: modulDaten[m.id]?.titel || m.titel
+durchlauf: modulDaten[m.id]?.durchlauf === true,
+titel: modulDaten[m.id]?.titel || m.titel
         }))
         .sort((a, b) => a.platz - b.platz);
       zeigeModule();
@@ -137,10 +139,13 @@
           "<input type='text' class='titel' style='width:100%; margin:6px 0; padding:8px;'>" +
           "<label style='display:block; margin-bottom:8px;'>" +
           "<input type='checkbox' class='aktiv'> auf der Startseite anzeigen</label>" +
+"<label style='display:block; margin-bottom:8px;'>" +
+"<input type='checkbox' class='durchlauf'> im Durchlauf enthalten</label>" +
           "<button type='button' class='speichern' style='display:inline-block; width:auto; padding:8px 14px;' data-aktion='hoch'>▲</button> " +
           "<button type='button' class='speichern' style='display:inline-block; width:auto; padding:8px 14px;' data-aktion='runter'>▼</button>";
         zeile.querySelector(".titel").value = m.titel;
         zeile.querySelector(".aktiv").checked = m.aktiv;
+zeile.querySelector(".durchlauf").checked = m.durchlauf;
 
         zeile.querySelector(".titel").addEventListener("input", (e) => {
           m.titel = e.target.value;
@@ -151,6 +156,10 @@
           m.aktiv = e.target.checked;
           speichereModule();
         });
+zeile.querySelector(".durchlauf").addEventListener("change", (e) => {
+  m.durchlauf = e.target.checked;
+  speichereModule();
+});
         zeile.querySelector("[data-aktion='hoch']").addEventListener("click", () => {
           if (i === 0) return;
           const tmp = moduleListe[i - 1];
@@ -175,10 +184,11 @@
       const neu = { ...modulDaten };
       moduleListe.forEach((m, i) => {
         neu[m.id] = {
-          reihenfolge: i,
-          aktiv: m.aktiv,
-          titel: m.titel && m.titel !== m.originalTitel ? m.titel : ""
-        };
+  reihenfolge: i,
+  aktiv: m.aktiv,
+  durchlauf: m.durchlauf === true,
+  titel: m.titel && m.titel !== m.originalTitel ? m.titel : ""
+};
       });
       await setzeEinstellung("moduleEinstellungen", neu);
       modulDaten = neu;

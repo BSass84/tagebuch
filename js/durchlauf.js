@@ -91,12 +91,19 @@ async function durchlaufStart() {
 function durchlaufBaueStartKnopf() {
   const liste = document.getElementById("moduleListe");
   if (!liste) return;
-  const knopf = document.createElement("a");
-  knopf.className = "modulKnopf";
-  knopf.href = "#";
-  knopf.innerHTML = '<span class="icon">▶</span><span>Durchlauf</span>';
-  knopf.addEventListener("click", (e) => { e.preventDefault(); durchlaufStart(); });
-  liste.insertBefore(knopf, liste.firstChild);
+  function sicherstellen() {
+    if (document.getElementById("durchlaufKnopf")) return;
+    const knopf = document.createElement("a");
+    knopf.className = "modulKnopf";
+    knopf.id = "durchlaufKnopf";
+    knopf.href = "#";
+    knopf.innerHTML = '<span class="icon">▶</span><span>Durchlauf</span>';
+    knopf.addEventListener("click", (e) => { e.preventDefault(); durchlaufStart(); });
+    liste.insertBefore(knopf, liste.firstChild);
+  }
+  sicherstellen();
+  const beobachter = new MutationObserver(sicherstellen);
+  beobachter.observe(liste, { childList: true });
 }
 
 // ---------- Modul-Seiten ----------
